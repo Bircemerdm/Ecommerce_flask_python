@@ -4,7 +4,7 @@ from api.users import apiUser
 from api.product import apiProduct
 from api.admin import apiAdmin
 from api.categories import apiCategories
-
+from flask_jwt_extended import JWTManager
 
 from ecommerce import createApp
 from ecommerce.initialize_db import createDB
@@ -16,7 +16,18 @@ from ecommerce.initialize_db import createDB
 # app ve db yaratma ----------------------------------
 app = createApp()
 CORS(app)
+
 # CORS (Cross-Origin Resource Sharing) = “Farklı alan adlarından gelen isteklere izin vermek” anlamına gelir.“Bu Flask uygulamasına (app) başka alan adlarından (örneğin React uygulamasından) gelen istekleri kabul et.”
+
+# JWT Ayarları
+app.config["JWT_SECRET_KEY"] = "super-secret-key-123"
+app.config["JWT_ACCESS_TOKEN_EXPIRES"] = 60 * 15  # 15 dakika
+app.config["JWT_REFRESH_TOKEN_EXPIRES"] = 60 * 60 * 24 * 30  # 30 gün
+
+jwt = JWTManager(app)
+
+# çünkü hangi uygulama için JWT yapılsın dememiz gerekiyor.Yani aynı app’i farklı eklentilere vermek tamamen normal ve Flask’ta standart bir yöntemdir.
+
 createDB()
 
 # kayıt alanı (app üzerine kaydetmediğim hiç bir sayfa app üzerinde görünmez tarayıcıda ulaşamayız)

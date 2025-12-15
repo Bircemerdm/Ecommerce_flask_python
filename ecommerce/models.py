@@ -69,6 +69,10 @@ class User(db.Model):
         user.activated = False
         db.session.commit()
 
+    @classmethod
+    def get_by_user_email(cls, email):
+        return cls.query.filter_by(email=email).first()
+
 
 @dataclass
 class Admin(db.Model):
@@ -95,11 +99,16 @@ class Admin(db.Model):
         return cls.query.filter_by(id=id).first()
 
     @classmethod
+    def get_admin_by_email(cls, email):
+        return cls.query.filter_by(email=email).first()
+
+    @classmethod
     def add_admin(cls, name, email, password):
         admin = cls(None, name, email, password, 0)
 
         db.session.add(admin)
         db.session.commit()
+        return admin
 
     @classmethod
     def update_admin(cls, id, name, email, password):

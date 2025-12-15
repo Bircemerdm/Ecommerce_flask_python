@@ -1,6 +1,10 @@
 from flask import jsonify, Blueprint, request
 from ecommerce.models import Admin
-from werkzeug.security import generate_password_hash
+from werkzeug.security import generate_password_hash, check_password_hash
+from flask_jwt_extended import (
+    create_access_token,
+    create_refresh_token,
+)
 
 apiAdmin = Blueprint("apiAdmin", __name__, url_prefix="/api/admin")
 
@@ -101,3 +105,89 @@ def admin(id):
     except Exception as e:
         print(e)
         return jsonify({"success": False, "message": "there is an error"})
+
+
+@apiAdmin.route("/login", methods=["POST"])
+def loginAdmin():
+    try:
+        email = request.form.get("email")
+        password = request.form.get("password")
+
+        if not email or not password:
+            return jsonify(
+                {"success": False, "message": "Email and password are required"}
+            )
+
+        admin = Admin.get_admin_by_email(email)
+
+        if not admin or not check_password_hash(admin.password, password):
+            return jsonify(
+                {"sucess": False, "message": "Email or password is incorrect"}
+            )
+
+        access_token = create_access_token(
+            identity=admin.id,
+            additional_claims={"role": "admin"},  # Role bilgisini token içine koy
+        )
+
+        refresh_token = create_refresh_token(identity=admin.id)
+
+        return jsonify(
+            {
+                "success": True,
+                "access_token": access_token,
+                "refresh_token": refresh_token,
+                "adminId": admin.id,
+                "adminEmail": admin.email,
+                "message": "login successful",
+            }
+        )
+
+    except Exception as e:
+        print(e)
+        return jsonify({"success": False, "message": "there is an error"})
+
+
+@apiAdmin.route("/register", methods=["POST"])
+def registerAdmin():
+    try:
+        name = request.form.get("name")
+        email = request.form.get("email")
+        password = request.form.get("password")
+
+        if not name or not email or not password:
+            return jsonify(
+                {
+                    "success": False,
+                    "message": "The name, email, and password fields cannot be left blank.",
+                },
+                400,
+            )
+
+        adminExists = Admin.get_admin_by_email(email)
+        if adminExists:
+            return jsonify(
+                {"success": False, "message": "This admin already exists."}, 409
+            )
+
+        hashed_password = generate_password_hash(password)
+        admin = Admin.add_admin(name, email, hashed_password)
+        if not admin:
+            return (
+                jsonify({"success": False, "message": "Admin could not be created."}),
+                500,
+            )
+
+        return (
+            jsonify(
+                {
+                    "success": True,
+                    "message": "Admin successfully registered",
+                    "adminId": admin.id,
+                    "adminEmail": admin.email,
+                }
+            ),
+            201,
+        )
+    except Exception as e:
+        return jsonify({"success": False, "message": "there is an error"}, 500)

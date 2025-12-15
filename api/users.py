@@ -1,6 +1,10 @@
 from flask import Flask, jsonify, Blueprint, request
 from ecommerce.models import User
-from werkzeug.security import generate_password_hash
+from werkzeug.security import generate_password_hash, check_password_hash
+from flask_jwt_extended import (
+    create_access_token,
+    create_refresh_token,
+)
 
 # yeni bir routera ihtiyacımız var app.router ı kullanamayız çünkü app dosyasında flask frameworkünü ayağa kaldırıp app ismini verdik burda başka bir isimlendirme yapmamız gerek
 
@@ -87,6 +91,7 @@ def user(id):
         return jsonify({"success": False, "message": "there is an error"})
 
 
+# Register işlemi
 @apiUser.route("/addUser", methods=["GET", "POST"])
 def user_add():
     try:
@@ -195,6 +200,52 @@ def activatedUser():
             return jsonify({"success": False, "message": "no activated users"})
 
     except Exception as e:
+        return jsonify({"success": False, "message": "there is an error"})
+
+
+@apiUser.route("/login", methods=["POST"])
+def UserLogin():
+    try:
+        email = request.form.get("email")
+        password = request.form.get("password")
+
+        hashed_password = generate_password_hash(password)
+
+        if not email or not password:
+            return jsonify(
+                {
+                    "success": False,
+                    "message": "Email and Password fiels can't be empty",
+                },
+                400,
+            )
+
+        user = User.get_by_user_email(email)
+
+        if not user and not check_password_hash(user.password, hashed_password):
+            return jsonify(
+                {"sucess": False, "message": "Email or password is incorrect"}
+            )
+
+        access_token = create_access_token(
+            identity=user.id, additional_claims={"role": "user"}
+        )
+
+        refresh_token = create_refresh_token(identity=user.id)
+
+        return jsonify(
+            {
+                "success": True,
+                "access_token": access_token,
+                "refresh_token": refresh_token,
+                "userId": user.id,
+                "userEmail": user.email,
+                "message": "login successful",
+            }
+        )
+
+    except Exception as e:
+        print(e)
         return jsonify({"success": False, "message": "there is an error"})
 
 
