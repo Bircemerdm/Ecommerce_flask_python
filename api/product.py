@@ -1,5 +1,7 @@
 from flask import Flask, jsonify, Blueprint, request
 from ecommerce.models import Product
+from utils.decorators import admin_required
+from flask_jwt_extended import jwt_required, get_jwt
 
 apiProduct = Blueprint("apiProduct", __name__, url_prefix="/api/product")
 
@@ -30,6 +32,7 @@ def get_all_product():
 
 
 @apiProduct.route("/addProduct", methods=["GET", "POST"])
+@admin_required
 def addProduct():
     try:
         name = request.form.get("name")
@@ -57,25 +60,20 @@ def addProduct():
         return jsonify({"success": False, "message": "there is an error"})
 
 
-@apiProduct.route("<int:id>", methods=["GET", "PUT", "DELETE"])
-def product(id):
+@apiProduct.route("<int:id>", methods=["PUT", "DELETE"])
+@jwt_required()
+def DeleteUpdateproduct(id):
     try:
         product = Product.get_product_by_id(id)
+
+        claims = get_jwt()
+        role = claims.get("role")
 
         if product.id == None:
             return jsonify({"succes": False, "message": "Product is not find"})
 
-        if request.method == "GET":
-            productObj = {
-                "id": product.id,
-                "name": product.name,
-                "price": product.price,
-                "oldPrice": product.oldPrice,
-                "description": product.description,
-                "category_id": product.category_id,
-            }
-
-            return jsonify({"succes": True, "data": productObj})
+        if role != "admin":
+            return jsonify({"success": False, "message": "Admin access required"})
 
         if request.method == "DELETE":
 
@@ -107,3 +105,29 @@ def product(id):
     except Exception as e:
         print("error", e)
         return jsonify({"success": False, "message": "there is an error"})
+
+
+@apiProduct.route("/<int:id>", methods=["GET"])
+def getProductById(id):
+    try:
+        product = Product.get_product_by_id(id)
+        if not product:
+            return jsonify({"success": False, "message": "Product not found"}), 404
+
+        return jsonify(
+            {
+                "success": True,
+                "data": {
+                    "id": product.id,
+                    "name": product.name,
+                    "price": product.price,
+                    "oldPrice": product.oldPrice,
+                    "description": product.description,
+                    "category_id": product.category_id,
+                },
+            }
+        )
+
+    except Exception as e:
+        print(e)
+        return jsonify({"success": False, "message": "there is an error"}), 500

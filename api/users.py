@@ -4,6 +4,8 @@ from werkzeug.security import generate_password_hash, check_password_hash
 from flask_jwt_extended import (
     create_access_token,
     create_refresh_token,
+    jwt_required,
+    get_jwt_identity,
 )
 
 # yeni bir routera ihtiyacımız var app.router ı kullanamayız çünkü app dosyasında flask frameworkünü ayağa kaldırıp app ismini verdik burda başka bir isimlendirme yapmamız gerek
@@ -209,8 +211,6 @@ def UserLogin():
         email = request.form.get("email")
         password = request.form.get("password")
 
-        hashed_password = generate_password_hash(password)
-
         if not email or not password:
             return jsonify(
                 {
@@ -222,16 +222,16 @@ def UserLogin():
 
         user = User.get_by_user_email(email)
 
-        if not user and not check_password_hash(user.password, hashed_password):
+        if not user and not check_password_hash(user.password, password):
             return jsonify(
                 {"sucess": False, "message": "Email or password is incorrect"}
             )
 
         access_token = create_access_token(
-            identity=user.id, additional_claims={"role": "user"}
+            identity=str(user.id), additional_claims={"role": "user"}
         )
 
-        refresh_token = create_refresh_token(identity=user.id)
+        refresh_token = create_refresh_token(identity=str(user.id))
 
         return jsonify(
             {
@@ -246,6 +246,61 @@ def UserLogin():
 
     except Exception as e:
         print(e)
+        return jsonify({"success": False, "message": "there is an error"})
+
+
+@apiUser.route("/register", methods=["POST"])
+def UserRegister():
+    try:
+        username = request.form.get("username")
+        email = request.form.get("email")
+        password = request.form.get("password")
+
+        old_email = User.get_by_user_email(email)
+
+        if not username or not email or not password:
+            return (
+                jsonify(
+                    {
+                        "success": False,
+                        "message": "username, email or password can not be empty",
+                    }
+                ),
+                400,
+            )
+
+        hashed_password = generate_password_hash(password)
+
+        if old_email:
+            return (
+                jsonify({"success": False, "message": "This user already exists"}),
+                409,
+            )
+
+        User.add_user(username, email, hashed_password)
+        return jsonify({"success": True, "message": "User added successfully "}), 201
+    except Exception as e:
+        return jsonify({"success": False, "message": "there is an error"})
+
+
+@apiUser.route("/profile", methods=["GET"])
+@jwt_required()  # Bu fonksiyon çalışmadan önce geçerli bir JWT var mı kontrol et
+def myProfile():
+    try:
+        user_id = get_jwt_identity()
+
+        user = User.get_user_by_id(user_id)
+
+        if not user:
+            return jsonify({"success": False, "message": "User not found"}), 404
+
+        return jsonify(
+            {
+                "success": True,
+                "data": {"id": user.id, "username": user.username, "email": user.email},
+            }
+        )
+    except Exception as e:
         return jsonify({"success": False, "message": "there is an error"})
 
 

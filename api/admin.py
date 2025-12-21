@@ -126,11 +126,11 @@ def loginAdmin():
             )
 
         access_token = create_access_token(
-            identity=admin.id,
+            identity=str(admin.id),
             additional_claims={"role": "admin"},  # Role bilgisini token içine koy
         )
 
-        refresh_token = create_refresh_token(identity=admin.id)
+        refresh_token = create_refresh_token(identity=str(admin.id))
 
         return jsonify(
             {

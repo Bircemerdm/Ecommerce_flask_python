@@ -1,5 +1,7 @@
 from flask import Flask, jsonify, Blueprint, request
 from ecommerce.models import Category
+from utils.decorators import admin_required
+from flask_jwt_extended import jwt_required, get_jwt
 
 apiCategories = Blueprint("apiCategories", __name__, url_prefix="/api/categories")
 
@@ -19,7 +21,8 @@ def getAllCategories():
         return jsonify({"success": False, "message": "there is an error"})
 
 
-@apiCategories.route("add_category", methods=["GET", "POST"])
+@apiCategories.route("/add_category", methods=["GET", "POST"])
+@admin_required
 def addCategory():
     try:
         name = request.form.get("name")
@@ -32,24 +35,22 @@ def addCategory():
         return jsonify({"success": False, "message": "there is an error"})
 
 
-@apiCategories.route("category/<int:id>", methods=["GET", "PUT", "DELETE"])
-def getByIdCategory(id):
+@apiCategories.route("/category/<int:id>", methods=["PUT", "DELETE"])
+@jwt_required()
+def DeleteUpdateCategory(id):
 
     try:
+        claims = get_jwt()
+        role = claims.get("role")
+
         category = Category.get_category_by_id(id)
         if category is None:
             return jsonify({"success": False, "message": "category is not find"})
 
-        if request.method == "GET":
+        if role != "admin":
+            return jsonify({"success": False, "message": "Admin access required"})
 
-            if category is None:
-
-                return jsonify({"success": False, "message": "category is not find"})
-            else:
-                categoryobj = {"id": category.id, "category name": category.name}
-                return jsonify({"success": True, "data": categoryobj})
-
-        elif request.method == "DELETE":
+        if request.method == "DELETE":
 
             if category is None:
                 return jsonify({"success": False, "message": "category is not find"})
@@ -57,7 +58,7 @@ def getByIdCategory(id):
                 Category.delete_category(id)
                 return jsonify({"success": True, "message": "Category is delete"})
 
-        elif request.method == "PUT":
+        if request.method == "PUT":
             name = request.form.get("name")
 
             if name == None:
@@ -65,6 +66,27 @@ def getByIdCategory(id):
 
             Category.update_category(id, name)
         return jsonify({"success": True, "message": "Category is update"})
+    except Exception as e:
+        print(e)
+        return jsonify({"success": False, "message": "there is an error"})
+
+
+@apiCategories.route("/category/get/<int:id>", methods=["GET"])
+def getByIdCategory(id):
+
+    try:
+
+        category = Category.get_category_by_id(id)
+        if category is None:
+            return jsonify({"success": False, "message": "category is not find"})
+
+        if category is None:
+
+            return jsonify({"success": False, "message": "category is not find"})
+        else:
+            categoryobj = {"id": category.id, "category name": category.name}
+            return jsonify({"success": True, "data": categoryobj})
+
     except Exception as e:
         print(e)
         return jsonify({"success": False, "message": "there is an error"})
