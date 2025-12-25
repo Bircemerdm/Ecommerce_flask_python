@@ -131,3 +131,41 @@ def getProductById(id):
     except Exception as e:
         print(e)
         return jsonify({"success": False, "message": "there is an error"}), 500
+
+
+@apiProduct.route("/get", methods=["GET"])
+def get_paginate():
+    try:
+        page = request.args.get("page", 1, type=int)
+        limit = request.args.get("limit", 1, type=int)
+
+        result = Product.paginate(page, limit)
+
+        products = []
+        for product in result["items"]:
+            products.append(
+                {
+                    "id": product.id,
+                    "name": product.name,
+                    "price": product.price,
+                    "oldPrice": product.oldPrice,
+                    "description": product.description,
+                    "category_id": product.category_id,
+                }
+            )
+        return jsonify(
+            {
+                "success": True,
+                "data": products,
+                "pagination": {
+                    "page": result["page"],
+                    "limit": result["limit"],
+                    "total": result["total"],
+                    "total_pages": result["total_pages"],
+                },
+            }
+        )
+
+    except Exception as e:
+        print(e)
+        return jsonify({"success": False, "message": "there is an error"})

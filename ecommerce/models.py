@@ -2,6 +2,7 @@
 
 from dataclasses import dataclass
 from ecommerce import db
+from math import ceil
 
 # ecommerce içindeki db yi import ettik __init__ dosyasında tanımladığımız şeyler dışarıya import edilebiliyor
 
@@ -222,3 +223,24 @@ class Product(db.Model):
 
         db.session.delete(product)
         db.session.commit()
+
+    @classmethod
+    def base_query(cls):
+        return cls.query
+
+    @classmethod
+    def paginate(cls, page, limit):
+
+        query = Product.base_query()
+
+        total = query.count()
+        offset = (page - 1) * limit
+        items = query.offset(offset).limit(limit).all()
+        total_pages = ceil(total / limit)
+        return {
+            "items": items,
+            "total": total,
+            "page": page,
+            "limit": limit,
+            "total_pages": total_pages,
+        }
